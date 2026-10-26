@@ -1,0 +1,2232 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Make Your Sea</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Aboreto&display=swap" rel="stylesheet">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+        }
+
+        body {
+            overflow: hidden;
+            background: #061722;
+            color: white;
+            font-family: Pretendard, Arial, sans-serif;
+        }
+
+        .sea {
+            position: fixed;
+            inset: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background: #061722;
+        }
+
+        /* VIDEO BACKGROUND */
+        .video-layer {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 100vw;
+            height: 100vh;
+            min-width: 100vw;
+            min-height: 100vh;
+            max-width: none;
+            max-height: none;
+            object-fit: cover;
+            object-position: center center;
+            transform: translate(-50%, -50%) scale(1.035);
+            transform-origin: center center;
+            z-index: 1;
+            opacity: 0;
+            background: #061722;
+            transition: opacity 1s ease, filter 1s ease;
+        }
+
+        .video-layer.active {
+            opacity: 1;
+        }
+
+        /* OVERLAYS */
+        .base-overlay {
+            position: absolute;
+            inset: 0;
+            z-index: 3;
+            pointer-events: none;
+            background: linear-gradient(
+                to bottom,
+                rgba(0, 15, 24, 0.03),
+                rgba(0, 12, 20, 0.17)
+            );
+        }
+
+        .sunset-overlay {
+            position: absolute;
+            inset: 0;
+            z-index: 4;
+            pointer-events: none;
+            opacity: 0;
+            background: linear-gradient(
+                to bottom,
+                rgba(214, 101, 71, 0.23),
+                rgba(229, 145, 98, 0.05) 45%,
+                rgba(25, 44, 58, 0.10)
+            );
+            transition: opacity 1s ease;
+        }
+
+        .night-overlay {
+            position: absolute;
+            inset: 0;
+            z-index: 4;
+            pointer-events: none;
+            opacity: 0;
+            background: linear-gradient(
+                to bottom,
+                rgba(3, 9, 25, 0.10),
+                rgba(4, 15, 34, 0.06) 50%,
+                rgba(2, 12, 22, 0.12)
+            );
+            transition: opacity 1s ease;
+        }
+
+        /* Rain has no on-screen particle effect. */
+        .rain-overlay {
+            position: absolute;
+            inset: 0;
+            z-index: 6;
+            pointer-events: none;
+            opacity: 0;
+        }
+
+        /* EDITOR TITLE */
+        .title {
+            display: none;
+            position: absolute;
+            left: 8%;
+            top: 24%;
+            z-index: 20;
+            margin: 0;
+            font-size: clamp(52px, 7vw, 96px);
+            font-weight: 300;
+            line-height: .95;
+            letter-spacing: -5px;
+            color: white;
+            user-select: none;
+            transition: opacity .5s ease, transform .5s ease;
+        }
+
+        /* CONTROL PANEL */
+        .panel {
+            position: absolute;
+            left: 8%;
+            bottom: 6%;
+            z-index: 20;
+            width: min(1100px, 84%);
+            padding: 20px 24px;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+            gap: 20px 24px;
+            align-items: start;
+            border: 1px solid rgba(255, 255, 255, .24);
+            border-radius: 18px;
+            background: rgba(6, 23, 32, .26);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            transition: opacity .5s ease, transform .5s ease;
+        }
+
+        .control {
+            min-width: 0;
+            align-self: start;
+        }
+
+        .control label {
+            display: block;
+            margin-bottom: 9px;
+            font-size: 9px;
+            letter-spacing: 2px;
+            opacity: .65;
+        }
+
+        /* SELECT */
+        select {
+            width: 100%;
+            padding: 5px 0 8px;
+            border: none;
+            border-bottom: 1px solid rgba(255, 255, 255, .42);
+            outline: none;
+            background: transparent;
+            color: white;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        select option {
+            color: #16394b;
+        }
+
+        /* RANGE */
+        input[type="range"] {
+            display: block;
+            width: 100%;
+            height: 2px;
+            margin: 0;
+            vertical-align: top;
+            appearance: none;
+            -webkit-appearance: none;
+            background: rgba(255, 255, 255, .38);
+            outline: none;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            width: 10px;
+            height: 10px;
+            appearance: none;
+            -webkit-appearance: none;
+            border-radius: 50%;
+            background: white;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 10px;
+            height: 10px;
+            border: none;
+            border-radius: 50%;
+            background: white;
+            cursor: pointer;
+        }
+
+        /* WAVE SIZE SLIDER */
+        .wave-size-slider-wrap {
+            position: relative;
+            width: 100%;
+            height: 34px;
+            padding-top: 0;
+        }
+
+        .wave-size-slider-wrap::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 5px;
+            right: 5px;
+            height: 2px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, .38);
+            pointer-events: none;
+        }
+
+        .wave-size-ticks {
+            position: absolute;
+            top: -1px;
+            left: 5px;
+            right: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 4px;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .wave-size-ticks span {
+            display: block;
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, .75);
+        }
+
+        input[type="range"].wave-size-slider {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 2;
+            display: block;
+            width: 100%;
+            height: 2px;
+            margin: 0;
+            padding: 0;
+            background: transparent;
+            vertical-align: top;
+        }
+
+        input[type="range"].wave-size-slider::-webkit-slider-runnable-track {
+            height: 2px;
+            background: transparent;
+        }
+
+        input[type="range"].wave-size-slider::-moz-range-track {
+            height: 2px;
+            background: transparent;
+        }
+
+        .wave-size-labels {
+            position: absolute;
+            top: 14px;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 10px;
+            line-height: 1;
+            color: rgba(255, 255, 255, .58);
+            user-select: none;
+        }
+
+        .wave-size-labels span {
+            width: 33.333%;
+            transition: color .2s ease, opacity .2s ease;
+        }
+
+        .wave-size-labels span:first-child {
+            text-align: left;
+        }
+
+        .wave-size-labels span:nth-child(2) {
+            text-align: center;
+        }
+
+        .wave-size-labels span:last-child {
+            text-align: right;
+        }
+
+        .wave-size-labels span.selected {
+            color: white;
+            opacity: 1;
+        }
+
+        /* INACTIVE CONTROLS */
+        .control.inactive {
+            opacity: .30;
+        }
+
+        /* ENTER BUTTON */
+        .enter {
+            width: 100%;
+            height: 38px;
+            padding: 0 20px;
+            border: 1px solid rgba(255, 255, 255, .64);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, .08);
+            color: white;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: background .2s ease, transform .2s ease;
+        }
+
+        .enter:hover {
+            background: rgba(255, 255, 255, .20);
+            transform: translateY(-2px);
+        }
+
+        /* CLOSE FOCUS MODE */
+        .close {
+            position: absolute;
+            top: 24px;
+            right: 28px;
+            z-index: 100;
+            width: 38px;
+            height: 38px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            background: transparent;
+            color: white;
+            font-size: 31px;
+            font-weight: 200;
+            line-height: 1;
+            cursor: pointer;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .4s ease;
+        }
+
+        /* IMMERSIVE MODE */
+        .sea.immersive-mode .title,
+        .sea.immersive-mode .panel {
+            opacity: 0;
+            transform: translateY(20px);
+            pointer-events: none;
+        }
+
+        .sea.immersive-mode .close {
+            opacity: .95;
+            pointer-events: auto;
+        }
+
+        /* HOME / MY PAGE / NAVIGATION */
+        .brand-title {
+            position: fixed;
+            z-index: 140;
+            top: 8%;
+            left: 7%;
+            font-family: Pretendard, Arial, sans-serif;
+            font-size: clamp(23px, 2.5vw, 36px);
+            font-weight: 800;
+            letter-spacing: -1.2px;
+            color: #fff;
+            cursor: pointer;
+            user-select: none;
+            transition: opacity .25s ease;
+        }
+
+        .brand-title:hover {
+            opacity: .78;
+        }
+
+        .top-actions {
+            position: fixed;
+            top: 8%;
+            right: 7%;
+            z-index: 140;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .nav-button,
+        .secondary-action {
+            border: none;
+            outline: none;
+            box-shadow: none;
+            border-radius: 999px;
+            padding: 11px 18px;
+            background: rgba(4,20,30,.28);
+            color: #fff;
+            font: 600 12px Pretendard, Arial, sans-serif;
+            letter-spacing: .3px;
+            cursor: pointer;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            transition: background .2s, transform .2s;
+        }
+
+        .nav-button:hover,
+        .secondary-action:hover {
+            background: rgba(255,255,255,.18);
+            transform: translateY(-1px);
+        }
+
+        .enter-control {
+            grid-column: 4;
+        }
+
+        .enter {
+            width: 100%;
+            min-height: 54px;
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: .4px;
+            background: rgba(255,255,255,.17);
+        }
+
+        .enter span {
+            margin-left: 12px;
+            font-size: 18px;
+        }
+
+        .action-control {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .action-control .secondary-action {
+            flex: 1;
+            padding: 10px 8px;
+            font-size: 11px;
+        }
+
+        /* Language selector on the landing page */
+        .language-switch {
+            position: fixed;
+            top: 8%;
+            right: 7%;
+            z-index: 180;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px;
+            border: 1px solid rgba(255,255,255,.28);
+            border-radius: 999px;
+            background: rgba(4,20,30,.30);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+
+        .language-switch button {
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+            border-radius: 999px;
+            padding: 8px 12px;
+            background: transparent;
+            color: rgba(255,255,255,.72);
+            font: 600 11px Pretendard, Arial, sans-serif;
+            cursor: pointer;
+            transition: background .2s ease, color .2s ease;
+        }
+
+        .language-switch button.active {
+            background: rgba(255,255,255,.20);
+            color: #fff;
+        }
+
+        .sea:not(.home-mode) .language-switch {
+            display: none !important;
+        }
+
+        .home-screen,
+        .my-page-screen {
+            position: fixed;
+            inset: 0;
+            z-index: 120;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            background: rgba(2,15,24,.17);
+            backdrop-filter: blur(1px);
+            transition: opacity .45s ease, visibility .45s ease;
+        }
+
+        .home-screen.hidden,
+        .my-page-screen.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .home-content {
+            transform: translateY(-5vh);
+        }
+
+        .home-heading {
+            font: 800 clamp(40px,7vw,88px)/.98 Pretendard, Arial, sans-serif;
+            letter-spacing: -3px;
+            margin-bottom: 28px;
+            text-shadow: 0 3px 30px rgba(0,0,0,.18);
+        }
+
+        .make-my-sea {
+            border: none;
+            outline: none;
+            box-shadow: none;
+            border-radius: 999px;
+            padding: 17px 32px;
+            color: #fff;
+            background: rgba(255,255,255,.13);
+            font: 700 13px Pretendard, Arial, sans-serif;
+            letter-spacing: 1.2px;
+            cursor: pointer;
+            backdrop-filter: blur(12px);
+            transition: background .2s, transform .2s;
+        }
+
+        .make-my-sea:hover {
+            background: rgba(255,255,255,.25);
+            transform: translateY(-2px);
+        }
+
+        .my-page-screen {
+            z-index: 130;
+            display: block;
+            overflow: auto;
+            padding: 8vh 7% 7vh;
+            text-align: left;
+            background: rgba(3,18,27,.78);
+            backdrop-filter: blur(22px);
+        }
+
+        .my-page-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+            margin: 0 0 36px;
+        }
+
+        .my-page-title {
+            font: 800 clamp(34px,5vw,58px)/1 Pretendard, Arial, sans-serif;
+            letter-spacing: -2px;
+        }
+
+        .back-button {
+            border: none;
+            outline: none;
+            box-shadow: none;
+            border-radius: 999px;
+            background: transparent;
+            color: white;
+            padding: 12px 19px;
+            font: 600 12px Pretendard, Arial, sans-serif;
+            cursor: pointer;
+        }
+
+        .saved-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+            gap: 20px;
+        }
+
+        .saved-card {
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,.22);
+            border-radius: 16px;
+            background: rgba(255,255,255,.07);
+            cursor: pointer;
+            transition: transform .2s, border-color .2s;
+        }
+
+        .saved-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(255,255,255,.6);
+        }
+
+        .saved-preview {
+            height: 150px;
+            background: linear-gradient(135deg, #355c6b, #152b3b 55%, #6b7775);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .saved-preview::after {
+            content: "";
+            position: absolute;
+            inset: 40% -10% -20%;
+            border-radius: 50% 50% 0 0;
+            background: rgba(194,220,220,.2);
+            transform: rotate(-7deg);
+        }
+
+        .saved-card-body {
+            padding: 17px;
+        }
+
+        .saved-card-title {
+            font: 700 16px Pretendard, Arial, sans-serif;
+            margin-bottom: 8px;
+        }
+
+        .saved-card-meta {
+            color: rgba(255,255,255,.62);
+            font-size: 12px;
+            line-height: 1.7;
+        }
+
+        .saved-card-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 14px;
+        }
+
+        .saved-card-actions button {
+            flex: 1;
+            border: none;
+            outline: none;
+            box-shadow: none;
+            border-radius: 999px;
+            background: rgba(255,255,255,.08);
+            color: #fff;
+            padding: 9px 7px;
+            font: 600 11px Pretendard, Arial, sans-serif;
+            cursor: pointer;
+        }
+
+        .empty-saved {
+            color: rgba(255,255,255,.68);
+            padding: 28px 0;
+            font-size: 14px;
+        }
+
+        .sea.home-mode .title,
+        .sea.home-mode .panel,
+        .sea.home-mode .top-actions,
+        .sea.home-mode .brand-title {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .sea.home-mode .home-screen {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+        }
+
+        .sea.my-page-mode .title,
+        .sea.my-page-mode .panel,
+        .sea.my-page-mode .top-actions {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .sea.my-page-mode .my-page-screen {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+        }
+
+        .sea.immersive-mode .brand-title,
+        .sea.immersive-mode .top-actions {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .sea.immersive-mode .enter-control,
+        .sea.immersive-mode .action-control {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* BUTTONS: remove outlines and border lines consistently */
+        button,
+        button:hover,
+        button:focus,
+        button:focus-visible,
+        button:active {
+            outline: none !important;
+            box-shadow: none !important;
+        }
+
+        .nav-button,
+        .secondary-action,
+        .make-my-sea,
+        .back-button,
+        .saved-card-actions button,
+        .enter {
+            border: none !important;
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 900px) {
+            .title {
+                left: 7%;
+                top: 17%;
+                font-size: 58px;
+            }
+
+            .panel {
+                left: 7%;
+                bottom: 4%;
+                width: 86%;
+                grid-template-columns: 1fr 1fr;
+                max-height: 50vh;
+                overflow-y: auto;
+            }
+
+            .brand-title {
+                top: 4%;
+                left: 5%;
+                font-size: 24px;
+            }
+
+            .top-actions {
+                top: 4%;
+                right: 5%;
+            }
+
+            .language-switch {
+                top: 4%;
+                right: 5%;
+            }
+
+            .nav-button {
+                padding: 9px 12px;
+                font-size: 11px;
+            }
+
+            .panel {
+                padding-top: 80px;
+            }
+
+            .enter-control {
+                grid-column: auto;
+            }
+        }
+
+        @media (max-width: 500px) {
+            .title {
+                font-size: 48px;
+            }
+
+            .panel {
+                grid-template-columns: 1fr;
+                padding: 18px 20px;
+                gap: 18px;
+                max-height: 58vh;
+            }
+
+            .close {
+                top: 15px;
+                right: 16px;
+            }
+
+            .top-actions {
+                gap: 5px;
+            }
+
+            .language-switch {
+                top: 5%;
+                right: 5%;
+            }
+
+            .nav-button {
+                padding: 8px 10px;
+                font-size: 10px;
+            }
+
+            .home-heading {
+                letter-spacing: -2px;
+            }
+
+            .my-page-screen {
+                padding: 5vh 5% 6vh;
+            }
+
+            .my-page-header {
+                margin-top: 0;
+            }
+        }
+
+
+        /* FINAL LAYOUT ADJUSTMENTS */
+        /* Keep the control panel off the landing page and My Page. */
+        .sea.home-mode .panel,
+        .sea.my-page-mode .panel {
+            display: none !important;
+        }
+
+        /* Home page: keep the main title and remove any subtitle/description. */
+        .home-description,
+        .home-subtitle,
+        .home-caption {
+            display: none !important;
+        }
+
+        /* My Page title occupies the same top-left position as the brand. */
+        .sea.my-page-mode .brand-title {
+            top: 8%;
+            left: 7%;
+            opacity: 1;
+            pointer-events: auto;
+            cursor: default;
+        }
+
+        .sea.my-page-mode .top-actions {
+            display: none !important;
+        }
+
+        /* Move BACK to the former MY PAGE position at the upper right. */
+        .back-button {
+            position: fixed;
+            z-index: 150;
+            top: 8%;
+            right: 7%;
+            padding: 11px 18px;
+            background: rgba(4,20,30,.28);
+            color: #fff;
+            font: 600 12px Pretendard, Arial, sans-serif;
+            letter-spacing: .3px;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+
+        .my-page-header {
+            margin-top: 0;
+            margin-bottom: 36px;
+        }
+
+        .my-page-title {
+            display: none !important;
+        }
+
+        /* Move the saved sea cards lower on My Page. */
+        .sea.my-page-mode .saved-grid {
+            margin-top: 60px;
+        }
+
+        .sea.my-page-mode .empty-saved {
+            margin-top: 60px;
+        }
+
+        /* Reset and Enter My Sea sit together at the lower-right corner. */
+        .action-control {
+            display: flex;
+            align-items: center;
+            gap: 0;
+        }
+
+        #resetSettings {
+            position: fixed;
+            z-index: 80;
+            right: calc(7% + 190px);
+            bottom: 6%;
+            width: 150px;
+            min-height: 54px;
+            padding: 10px 18px;
+            border: none !important;
+            border-radius: 999px;
+            background: rgba(4,20,30,.42);
+            color: #fff;
+            font: 700 13px Pretendard, Arial, sans-serif;
+            letter-spacing: .4px;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+
+        .enter-control {
+            position: fixed;
+            z-index: 80;
+            right: 7%;
+            bottom: calc(6% + 20px);
+            width: 170px;
+            grid-column: auto;
+        }
+
+        .enter {
+            width: 100%;
+            min-height: 54px;
+            padding: 10px 16px;
+            border: none !important;
+            border-radius: 999px;
+            background: rgba(255,255,255,.17);
+            color: #fff;
+            font: 700 13px Pretendard, Arial, sans-serif;
+            letter-spacing: .3px;
+            white-space: nowrap;
+        }
+
+        .sea.home-mode #resetSettings,
+        .sea.home-mode .enter-control,
+        .sea.my-page-mode #resetSettings,
+        .sea.my-page-mode .enter-control {
+            display: none !important;
+        }
+
+        .sea.immersive-mode #resetSettings {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        @media (max-width: 900px) {
+            .sea.my-page-mode .brand-title {
+                top: 4%;
+                left: 5%;
+            }
+
+            .back-button {
+                top: 4%;
+                right: 5%;
+            }
+
+            #resetSettings {
+                right: calc(5% + 145px);
+                bottom: 4%;
+                width: 125px;
+                min-height: 48px;
+            }
+
+            .enter-control {
+                right: 5%;
+                bottom: calc(4% + 16px);
+                width: 135px;
+            }
+
+            .enter {
+                min-height: 48px;
+                font-size: 11px;
+            }
+        }
+
+        @media (max-width: 500px) {
+            .sea.my-page-mode .brand-title {
+                top: 5%;
+                left: 5%;
+                font-size: 22px;
+            }
+
+            .back-button {
+                top: 5%;
+                right: 5%;
+                padding: 8px 10px;
+                font-size: 10px;
+            }
+
+            #resetSettings {
+                right: calc(5% + 118px);
+                bottom: 3%;
+                width: 100px;
+                min-height: 44px;
+                padding: 8px;
+                font-size: 11px;
+            }
+
+            .enter-control {
+                right: 5%;
+                bottom: calc(3% + 12px);
+                width: 110px;
+            }
+
+            .enter {
+                min-height: 44px;
+                padding: 8px;
+                font-size: 10px;
+            }
+        }
+
+
+        /* Save stays inside the settings panel, in the former focus-button position. */
+        .panel .action-control {
+            grid-column: 4;
+            width: 100%;
+            align-self: end;
+            margin-top: 0;
+        }
+
+        .panel .action-control #saveSea {
+            width: 100%;
+            min-height: 54px;
+            padding: 10px 12px;
+            white-space: nowrap;
+        }
+
+        /* Reset and focus mode sit outside the panel at the bottom-right. */
+        #resetSettings.outside-reset {
+            position: fixed;
+            z-index: 80;
+            right: calc(7% + 190px);
+            bottom: 6%;
+            width: 150px;
+            min-height: 54px;
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            padding: 10px 18px;
+            border: none !important;
+            border-radius: 999px;
+            background: rgba(4,20,30,.42);
+            color: #fff;
+            font: 700 13px Pretendard, Arial, sans-serif;
+            letter-spacing: .4px;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+
+        .enter-control {
+            position: fixed;
+            z-index: 80;
+            right: 7%;
+            bottom: calc(6% + 20px);
+            width: 170px;
+            grid-column: auto;
+        }
+
+        .enter-control .enter {
+            width: 100%;
+            min-height: 54px;
+            padding: 10px 16px;
+            border: none !important;
+            border-radius: 999px;
+            background: rgba(255,255,255,.17);
+            color: #fff;
+            font: 700 13px Pretendard, Arial, sans-serif;
+            letter-spacing: .3px;
+            white-space: nowrap;
+        }
+
+        .sea.home-mode #resetSettings,
+        .sea.home-mode .enter-control,
+        .sea.my-page-mode #resetSettings,
+        .sea.my-page-mode .enter-control {
+            display: none !important;
+        }
+
+        .sea.immersive-mode #resetSettings,
+        .sea.immersive-mode .enter-control {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        @media (max-width: 900px) {
+            .panel .action-control {
+                grid-column: 2;
+            }
+
+            #resetSettings.outside-reset {
+                right: calc(5% + 145px);
+                bottom: 4%;
+                width: 125px;
+                min-height: 48px;
+            }
+
+            .enter-control {
+                right: 5%;
+                bottom: calc(4% + 16px);
+                width: 135px;
+            }
+
+            .enter-control .enter {
+                min-height: 48px;
+                font-size: 11px;
+            }
+        }
+
+        @media (max-width: 500px) {
+            .panel .action-control {
+                grid-column: 1 / -1;
+            }
+
+            #resetSettings.outside-reset {
+                right: calc(5% + 118px);
+                bottom: 3%;
+                width: 100px;
+                min-height: 44px;
+                padding: 8px;
+                font-size: 11px;
+            }
+
+            .enter-control {
+                right: 5%;
+                bottom: calc(3% + 12px);
+                width: 110px;
+            }
+
+            .enter-control .enter {
+                min-height: 44px;
+                padding: 8px;
+                font-size: 10px;
+            }
+        }
+
+
+
+        /* Latest adjustments: reset inside the panel at lower-left. */
+        #resetSettings.outside-reset {
+            position: fixed;
+            left: calc(8% + 24px);
+            right: auto;
+            bottom: calc(6% + 20px);
+            width: 150px;
+            min-height: 54px;
+        }
+
+        /* Make the wave-size words act like clickable controls. */
+        .wave-size-labels span {
+            cursor: pointer;
+            user-select: none;
+            padding: 8px 0;
+        }
+
+        .wave-size-labels span:hover {
+            color: #fff;
+        }
+
+        #weather option:disabled {
+            color: #999;
+        }
+
+        @media (max-width: 900px) {
+            #resetSettings.outside-reset {
+                left: calc(5% + 16px);
+                right: auto;
+                bottom: calc(4% + 16px);
+                width: 125px;
+                min-height: 48px;
+            }
+        }
+
+        @media (max-width: 500px) {
+            #resetSettings.outside-reset {
+                left: calc(5% + 12px);
+                right: auto;
+                bottom: calc(3% + 12px);
+                width: 100px;
+                min-height: 44px;
+            }
+        }
+
+    
+
+        /* AB ORETO: titles and My Page typography */
+        .brand-title,
+        .home-title,
+        .home-heading,
+        .title,
+        .my-page-title,
+        .saved-card-title {
+            font-family: "Aboreto", serif !important;
+            font-weight: 400 !important;
+            letter-spacing: 0 !important;
+        }
+
+        /* Korean My Page heading: Pretendard SemiBold only in Korean mode. */
+        html[lang="ko"] .sea.my-page-mode .brand-title {
+            font-family: Pretendard, Arial, sans-serif !important;
+            font-weight: 600 !important;
+            letter-spacing: 0 !important;
+        }
+
+        /* Landing introduction: explain the relaxing customization experience. */
+        .home-content {
+            width: min(920px, 90vw);
+            transform: translateY(-1vh);
+        }
+        .home-description {
+            display: block !important;
+            margin: 0 auto 24px;
+            max-width: 680px;
+            color: rgba(255,255,255,.88);
+            font-size: clamp(14px, 1.5vw, 17px);
+            font-weight: 400;
+            line-height: 1.85;
+            letter-spacing: .1px;
+            text-shadow: 0 2px 16px rgba(0,0,0,.35);
+        }
+        .home-features {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 12px;
+            margin: 34px auto 0;
+            text-align: left;
+        }
+        .home-feature {
+            display: flex;
+            flex-direction: column;
+            gap: 9px;
+            min-height: 138px;
+            padding: 18px 19px;
+            border: 1px solid rgba(255,255,255,.18);
+            border-radius: 16px;
+            background: rgba(5,23,35,.25);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        .feature-number { font-size: 10px; letter-spacing: 1.6px; color: rgba(255,255,255,.65); }
+        .home-feature strong { font-size: 14px; font-weight: 600; color: #fff; }
+        .home-feature span:last-child { font-size: 12px; line-height: 1.65; color: rgba(255,255,255,.78); }
+        /* Keep the original slim slider appearance; improve interaction in JS. */
+        .wave-size-labels span { cursor: pointer; user-select: none; -webkit-user-select: none; }
+        @media (max-width: 650px) {
+            .home-content { width: 88vw; transform: translateY(0); max-height: 88vh; overflow-y: auto; padding: 22px 0; }
+            .home-heading { font-size: clamp(38px, 10vw, 58px); margin-bottom: 22px; }
+            .home-description { font-size: 13px; margin-bottom: 20px; }
+            .home-features { grid-template-columns: 1fr; gap: 8px; margin-top: 22px; }
+            .home-feature { min-height: 0; padding: 12px 15px; gap: 5px; }
+            .home-feature span:last-child { font-size: 11px; }
+        }
+</style>
+</head>
+
+<body>
+    <div class="sea home-mode" id="sea">
+
+        <!-- BRAND / NAVIGATION -->
+        <div class="brand-title" id="brandTitle">Make Your Sea</div>
+
+        <div class="language-switch" id="languageSwitch" aria-label="Language selection">
+            <button type="button" id="langKo" class="active" aria-pressed="true">한국어</button>
+            <button type="button" id="langEn" aria-pressed="false">ENGLISH</button>
+        </div>
+
+        <nav class="top-actions" id="topActions" aria-label="Main navigation">
+            <button class="nav-button" id="openMyPage" type="button">MY PAGE</button>
+        </nav>
+
+        <!-- HOME SCREEN -->
+        <section class="home-screen" id="homeScreen">
+            <div class="home-content">
+                <h1 class="home-heading" id="homeHeading">Make Your Sea</h1>
+                <p class="home-description" id="homeDescription">파도와 날씨, 시간과 소리를 내 취향대로 조합해 나만의 바다를 만들어요.<br>잠시 머물며 쉬어가는 커스텀 힐링 공간입니다.</p>
+                <button class="make-my-sea" id="makeMySea" type="button">MAKE MY SEA</button>
+                <div class="home-features" id="homeFeatures" aria-label="서비스 기능">
+                    <div class="home-feature"><span class="feature-number"></span><strong id="featureTitle1">나만의 바다 커스텀</strong><span id="featureText1">시간대와 날씨, 파도 크기와 속도를 취향대로 조절해요.</span></div>
+                    <div class="home-feature"><span class="feature-number"></span><strong id="featureTitle2">소리로 채우는 휴식</strong><span id="featureText2">파도·바람·빗소리의 크기를 섞어 나만의 사운드를 만들어요.</span></div>
+                    <div class="home-feature"><span class="feature-number"></span><strong id="featureTitle3">나만의 바다 저장</strong><span id="featureText3">마음에 드는 조합을 저장하고 언제든 다시 감상해요.</span></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- MY PAGE -->
+        <section class="my-page-screen hidden" id="myPageScreen" aria-label="My Page">
+            <div class="my-page-header">
+                <h2 class="my-page-title">My Page</h2>
+                <button class="back-button" id="backFromMyPage" type="button">BACK</button>
+            </div>
+
+            <div class="saved-grid" id="savedGrid"></div>
+
+            <p class="empty-saved" id="emptySaved">
+                아직 저장한 바다가 없어요. 나만의 바다를 만들고 저장해 보세요.
+            </p>
+        </section>
+
+        <!-- DAY VIDEOS -->
+        <!-- Required: videos/day_small.mp4, videos/day_medium.mp4, videos/day_large.mp4 -->
+        <video class="video-layer" id="videoDaySmall" muted loop playsinline preload="metadata">
+            <source src="videos/day_small.mp4" type="video/mp4">
+        </video>
+
+        <video class="video-layer active" id="videoDayMedium" autoplay muted loop playsinline preload="auto">
+            <source src="videos/day_medium.mp4" type="video/mp4">
+        </video>
+
+        <video class="video-layer" id="videoDayLarge" muted loop playsinline preload="metadata">
+            <source src="videos/day_large.mp4" type="video/mp4">
+        </video>
+
+        <!-- SUNSET VIDEOS -->
+        <!-- Required: videos/sunset_small.mp4, videos/sunset_medium.mp4, videos/sunset_large.mp4 -->
+        <video class="video-layer" id="videoSunsetSmall" muted loop playsinline preload="metadata">
+            <source src="videos/sunset_small.mp4" type="video/mp4">
+        </video>
+
+        <video class="video-layer" id="videoSunsetMedium" muted loop playsinline preload="metadata">
+            <source src="videos/sunset_medium.mp4" type="video/mp4">
+        </video>
+
+        <video class="video-layer" id="videoSunsetLarge" muted loop playsinline preload="metadata">
+            <source src="videos/sunset_large.mp4" type="video/mp4">
+        </video>
+
+        <!-- NIGHT VIDEOS -->
+        <!-- Required: videos/night_small.mp4, videos/night_medium.mp4, videos/night_large.mp4 -->
+        <video class="video-layer" id="videoNightSmall" muted loop playsinline preload="metadata">
+            <source src="videos/night_small.mp4" type="video/mp4">
+        </video>
+
+        <video class="video-layer" id="videoNightMedium" muted loop playsinline preload="metadata">
+            <source src="videos/night_medium.mp4" type="video/mp4">
+        </video>
+
+        <video class="video-layer" id="videoNightLarge" muted loop playsinline preload="metadata">
+            <source src="videos/night_large.mp4" type="video/mp4">
+        </video>
+
+        <!-- RAIN VIDEOS: use these names for rainy sea footage -->
+        <!-- Required: videos/day_rain_small.mp4, videos/day_rain_medium.mp4, videos/day_rain_large.mp4 -->
+        <video class="video-layer" id="videoDayRainSmall" muted loop playsinline preload="metadata">
+            <source src="videos/day_rain_small.mp4" type="video/mp4">
+        </video>
+        <video class="video-layer" id="videoDayRainMedium" muted loop playsinline preload="metadata">
+            <source src="videos/day_rain_medium.mp4" type="video/mp4">
+        </video>
+        <video class="video-layer" id="videoDayRainLarge" muted loop playsinline preload="metadata">
+            <source src="videos/day_rain_large.mp4" type="video/mp4">
+        </video>
+
+        <!-- Required: videos/night_rain_small.mp4, videos/night_rain_medium.mp4, videos/night_rain_large.mp4 -->
+        <video class="video-layer" id="videoNightRainSmall" muted loop playsinline preload="metadata">
+            <source src="videos/night_rain_small.mp4" type="video/mp4">
+        </video>
+        <video class="video-layer" id="videoNightRainMedium" muted loop playsinline preload="metadata">
+            <source src="videos/night_rain_medium.mp4" type="video/mp4">
+        </video>
+        <video class="video-layer" id="videoNightRainLarge" muted loop playsinline preload="metadata">
+            <source src="videos/night_rain_large.mp4" type="video/mp4">
+        </video>
+
+        <!-- VISUAL OVERLAYS -->
+        <div class="base-overlay"></div>
+        <div class="sunset-overlay" id="sunsetOverlay"></div>
+        <div class="night-overlay" id="nightOverlay"></div>
+        <div class="rain-overlay" id="rainOverlay"></div>
+
+        <!-- EDITOR TITLE -->
+        <h1 class="title" id="title">Make Your Sea</h1>
+
+        <!-- CONTROL PANEL -->
+        <section class="panel" id="panel">
+
+            <div class="control">
+                <label for="time">TIME</label>
+                <select id="time">
+                    <option value="day" selected>Day</option>
+                    <option value="sunset">Sunset</option>
+                    <option value="night">Night</option>
+                </select>
+            </div>
+
+            <div class="control">
+                <label for="weather">WEATHER</label>
+                <select id="weather">
+                    <option value="clear" selected>Clear</option>
+                    <option value="cloudy">Cloudy</option>
+                    <option value="rain">Rain</option>
+                </select>
+            </div>
+
+            <div class="control" id="waveSizeControl">
+                <label for="waveSize">WAVE SIZE</label>
+
+                <div class="wave-size-slider-wrap">
+                    <div class="wave-size-ticks" aria-hidden="true">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+
+                    <input
+                        id="waveSize"
+                        class="wave-size-slider"
+                        type="range"
+                        min="0"
+                        max="2"
+                        step="1"
+                        value="1"
+                        aria-label="Wave size: Small, Medium, Large"
+                    >
+
+                    <div class="wave-size-labels" aria-hidden="true">
+                        <span data-wave-size-label="small">Small</span>
+                        <span data-wave-size-label="medium" class="selected">Medium</span>
+                        <span data-wave-size-label="large">Large</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control">
+                <label for="waveSpeed">WAVE SPEED</label>
+                <input id="waveSpeed" type="range" min="1" max="10" value="5">
+            </div>
+
+            <div class="control">
+                <label for="sound">SOUND</label>
+                <input id="sound" type="range" min="0" max="100" value="50">
+            </div>
+
+            <div class="control">
+                <label for="waveVolume">WAVE</label>
+                <input id="waveVolume" type="range" min="0" max="100" value="100">
+            </div>
+
+            <div class="control" id="windControl">
+                <label for="windVolume">WIND</label>
+                <input id="windVolume" type="range" min="0" max="100" value="10">
+            </div>
+
+            <div class="control" id="rainControl">
+                <label for="rainVolume">RAIN</label>
+                <input id="rainVolume" type="range" min="0" max="100" value="60">
+            </div>
+
+            <div class="control action-control">
+                <button class="secondary-action" id="saveSea" type="button">SAVE MY SEA</button>
+            </div>
+        </section>
+
+        <!-- RESET and focus-mode buttons outside the settings panel -->
+        <button class="secondary-action outside-reset" id="resetSettings" type="button">RESET</button>
+        <div class="control enter-control">
+            <button class="enter" id="enter" type="button">ENTER MY SEA</button>
+        </div>
+
+        <!-- CLOSE FOCUS MODE -->
+        <button class="close" id="close" type="button" aria-label="Close immersive mode">×</button>
+
+        <!-- AUDIO FILES -->
+        <audio id="oceanAudio" src="sounds/Ocean.mp3" loop preload="auto"></audio>
+        <audio id="waveAudio" src="sounds/Wave.mp3" loop preload="auto"></audio>
+        <audio id="windAudio" src="sounds/Wind.mp3" loop preload="auto"></audio>
+        <audio id="rainAudio" src="sounds/Rain.mp3" loop preload="auto"></audio>
+    </div>
+
+    <script>
+        /* ELEMENTS */
+        const sea = document.getElementById("sea");
+
+        const videos = {
+            day: {
+                small: document.getElementById("videoDaySmall"),
+                medium: document.getElementById("videoDayMedium"),
+                large: document.getElementById("videoDayLarge")
+            },
+            sunset: {
+                small: document.getElementById("videoSunsetSmall"),
+                medium: document.getElementById("videoSunsetMedium"),
+                large: document.getElementById("videoSunsetLarge")
+            },
+            night: {
+                small: document.getElementById("videoNightSmall"),
+                medium: document.getElementById("videoNightMedium"),
+                large: document.getElementById("videoNightLarge")
+            }
+        };
+
+        const rainVideos = {
+            day: {
+                small: document.getElementById("videoDayRainSmall"),
+                medium: document.getElementById("videoDayRainMedium"),
+                large: document.getElementById("videoDayRainLarge")
+            },
+            night: {
+                small: document.getElementById("videoNightRainSmall"),
+                medium: document.getElementById("videoNightRainMedium"),
+                large: document.getElementById("videoNightRainLarge")
+            }
+        };
+
+        const allVideos = [
+            ...Object.values(videos).flatMap(timeGroup => Object.values(timeGroup)),
+            ...Object.values(rainVideos).flatMap(timeGroup => Object.values(timeGroup))
+        ];
+
+        const waveSizeSlider = document.getElementById("waveSize");
+        const waveSizeLabels = document.querySelectorAll("[data-wave-size-label]");
+        const waveSizeSteps = ["small", "medium", "large"];
+
+        const sunsetOverlay = document.getElementById("sunsetOverlay");
+        const nightOverlay = document.getElementById("nightOverlay");
+        const rainOverlay = document.getElementById("rainOverlay");
+
+        const time = document.getElementById("time");
+        const weather = document.getElementById("weather");
+        const waveSpeed = document.getElementById("waveSpeed");
+        const sound = document.getElementById("sound");
+        const waveVolume = document.getElementById("waveVolume");
+        const windVolume = document.getElementById("windVolume");
+        const rainVolume = document.getElementById("rainVolume");
+
+        const windControl = document.getElementById("windControl");
+        const rainControl = document.getElementById("rainControl");
+
+        const enter = document.getElementById("enter");
+        const close = document.getElementById("close");
+
+        /* AUDIO ELEMENTS */
+        const oceanAudio = document.getElementById("oceanAudio");
+        const waveAudio = document.getElementById("waveAudio");
+        const windAudio = document.getElementById("windAudio");
+        const rainAudio = document.getElementById("rainAudio");
+
+        /* VIDEO STATE */
+        let currentVideo = videos.day.medium;
+        let currentWaveSize = "medium";
+        let videoSwitchToken = 0;
+
+        /* AUDIO STATE */
+        let audioStarted = false;
+
+        /* START AUDIO */
+        async function startAudio() {
+            if (audioStarted) {
+                await resumeActiveAudio();
+                return;
+            }
+
+            audioStarted = true;
+            updateAudioVolumes();
+
+            try {
+                await oceanAudio.play();
+            } catch (error) {
+                // Browser audio autoplay may require user interaction.
+            }
+
+            try {
+                await waveAudio.play();
+            } catch (error) {
+                // Playback is retried after the next user interaction.
+            }
+
+            updateWeatherAudio();
+        }
+
+        /* RESUME ACTIVE AUDIO */
+        async function resumeActiveAudio() {
+            if (oceanAudio.paused) {
+                try {
+                    await oceanAudio.play();
+                } catch (error) {}
+            }
+
+            if (waveAudio.paused) {
+                try {
+                    await waveAudio.play();
+                } catch (error) {}
+            }
+
+            updateWeatherAudio();
+        }
+
+        /* AUDIO VOLUMES
+           SOUND = master volume
+           WAVE = Wave.mp3 volume within master volume */
+        function updateAudioVolumes() {
+            const master = Number(sound.value) / 100;
+            const wave = Number(waveVolume.value) / 100;
+            const wind = Number(windVolume.value) / 100;
+            const rainLevel = Number(rainVolume.value) / 100;
+
+            // Keep the overall master at the user's selected value (default 50),
+            // while balancing the individual tracks so waves stay in the foreground.
+            oceanAudio.volume = Math.min(1, master * 0.30);
+            waveAudio.volume = Math.min(1, master * wave * 1.95);
+            windAudio.volume = Math.min(1, master * wind * 0.45);
+            rainAudio.volume = Math.min(1, master * rainLevel * 1.35);
+        }
+
+        /* WEATHER AUDIO */
+        function updateWeatherAudio() {
+            updateAudioVolumes();
+
+            if (!audioStarted) return;
+
+            if (weather.value === "clear") {
+                windAudio.pause();
+                rainAudio.pause();
+                windControl.classList.add("inactive");
+                rainControl.classList.add("inactive");
+            } else if (weather.value === "cloudy") {
+                // Cloudy: Ocean + Wave + Wind.
+                windAudio.play().catch(() => {});
+                rainAudio.pause();
+                windControl.classList.remove("inactive");
+                rainControl.classList.add("inactive");
+            } else if (weather.value === "rain") {
+                // Rain: Ocean + Wave + Wind + Rain.
+                windAudio.play().catch(() => {});
+                rainAudio.play().catch(() => {});
+                windControl.classList.remove("inactive");
+                rainControl.classList.remove("inactive");
+            }
+        }
+
+        /* WAVE SPEED */
+        function getWaveSpeed() {
+            const value = Number(waveSpeed.value);
+            return 0.55 + (value - 1) * 0.10;
+        }
+
+        function updateWaveSpeed() {
+            const speed = getWaveSpeed();
+
+            allVideos.forEach(video => {
+                video.playbackRate = speed;
+            });
+
+            waveAudio.playbackRate = speed;
+        }
+
+        /* WAVE SIZE SLIDER */
+        function updateWaveSizeSlider() {
+            const selectedIndex = waveSizeSteps.indexOf(currentWaveSize);
+            waveSizeSlider.value = String(selectedIndex < 0 ? 1 : selectedIndex);
+
+            waveSizeLabels.forEach(label => {
+                const isSelected = label.dataset.waveSizeLabel === currentWaveSize;
+                label.classList.toggle("selected", isSelected);
+            });
+        }
+
+        // Clicking Small / Medium / Large text changes the wave-size slider too.
+        waveSizeLabels.forEach(label => {
+            label.setAttribute("role", "button");
+            label.setAttribute("tabindex", "0");
+            label.addEventListener("click", function () {
+                const selectedSize = label.dataset.waveSizeLabel;
+                const selectedIndex = waveSizeSteps.indexOf(selectedSize);
+                if (selectedIndex < 0) return;
+                startAudio();
+                waveSizeSlider.value = String(selectedIndex);
+                currentWaveSize = selectedSize;
+                updateWaveSizeSlider();
+                switchVideo(time.value, selectedSize);
+                applyVisualSettings();
+            });
+            label.addEventListener("keydown", function (event) {
+                if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    label.click();
+                }
+            });
+        });
+
+        /* SWITCH VIDEO */
+        function switchVideo(mode, size = currentWaveSize) {
+            // Rain uses dedicated rainy footage. Sunset disables Rain in the UI,
+            // so rainy video is only selected for Day or Night.
+            const nextVideo = weather.value === "rain" && rainVideos[mode]
+                ? rainVideos[mode][size]
+                : (videos[mode] && videos[mode][size]);
+            if (!nextVideo) return;
+
+            currentWaveSize = size;
+            updateWaveSizeSlider();
+            updateWaveSpeed();
+
+            const thisSwitchToken = ++videoSwitchToken;
+
+            if (nextVideo === currentVideo) {
+                applyVisualSettings();
+                return;
+            }
+
+            if (nextVideo.readyState > 0) {
+                try {
+                    nextVideo.currentTime = 0;
+                } catch (error) {}
+            }
+
+            nextVideo.playbackRate = getWaveSpeed();
+
+            const finishSwitch = () => {
+                if (thisSwitchToken !== videoSwitchToken) {
+                    if (nextVideo !== currentVideo) nextVideo.pause();
+                    return;
+                }
+
+                const previousVideo = currentVideo;
+
+                nextVideo.classList.add("active");
+                previousVideo.classList.remove("active");
+                currentVideo = nextVideo;
+
+                applyVisualSettings();
+
+                window.setTimeout(() => {
+                    if (previousVideo !== currentVideo) {
+                        previousVideo.pause();
+                        previousVideo.currentTime = 0;
+                    }
+                }, 1100);
+            };
+
+            nextVideo.play().then(finishSwitch).catch(finishSwitch);
+        }
+
+        /* VISUAL FILTERS */
+        const baseFilters = {
+            day: "brightness(.92) contrast(1.06) saturate(1.05)",
+            sunset: "brightness(.95) contrast(1.07) saturate(1.08)",
+            night: "brightness(.96) contrast(1.10) saturate(.92)"
+        };
+
+        function resetFilters() {
+            Object.entries(videos).forEach(([mode, sizeGroup]) => {
+                Object.values(sizeGroup).forEach(video => {
+                    video.style.filter = baseFilters[mode];
+                });
+            });
+            Object.entries(rainVideos).forEach(([mode, sizeGroup]) => {
+                Object.values(sizeGroup).forEach(video => {
+                    video.style.filter = baseFilters[mode];
+                });
+            });
+        }
+
+        function applyVisualSettings() {
+            const selectedTime = time.value;
+
+            // Sunset mode only supports clear weather; disable Cloudy and Rain.
+            const cloudyOption = weather.querySelector('option[value="cloudy"]');
+            const rainOption = weather.querySelector('option[value="rain"]');
+            const isSunset = selectedTime === "sunset";
+            if (cloudyOption) cloudyOption.disabled = isSunset;
+            if (rainOption) rainOption.disabled = isSunset;
+            if (isSunset && weather.value !== "clear") {
+                weather.value = "clear";
+            }
+            const selectedWeather = weather.value;
+
+            resetFilters();
+
+            sunsetOverlay.style.opacity = "0";
+            nightOverlay.style.opacity = "0";
+            rainOverlay.style.opacity = "0";
+
+            if (selectedTime === "sunset") {
+                sunsetOverlay.style.opacity = "1";
+            } else if (selectedTime === "night") {
+                nightOverlay.style.opacity = ".16";
+            }
+
+            // Cloudy darkens and desaturates the video. No cloud graphic.
+            if (selectedWeather === "cloudy") {
+                currentVideo.style.filter += " brightness(.76) saturate(.70) contrast(.98)";
+            }
+
+            // Rain keeps the same saturation as Cloudy.
+            // No raindrops or rain graphics are shown.
+            if (selectedWeather === "rain") {
+                currentVideo.style.filter += " brightness(.98) saturate(.70) contrast(.98)";
+            }
+        }
+
+        function updateEnvironment() {
+            switchVideo(time.value, currentWaveSize);
+            applyVisualSettings();
+            updateWeatherAudio();
+            updateWaveSpeed();
+        }
+
+        /* TIME AND WEATHER EVENTS */
+        time.addEventListener("change", function () {
+            startAudio();
+            updateEnvironment();
+        });
+
+        weather.addEventListener("change", function () {
+            startAudio();
+            updateEnvironment();
+        });
+
+        /* WAVE SIZE EVENT */
+        waveSizeSlider.addEventListener("input", function () {
+            startAudio();
+
+            const selectedSize = waveSizeSteps[Number(waveSizeSlider.value)];
+            if (!selectedSize) return;
+
+            switchVideo(time.value, selectedSize);
+            applyVisualSettings();
+        });
+
+        /* Easier slider operation without changing the original bar design.
+           Clicking anywhere in a control row sets its range value by horizontal position. */
+        document.querySelectorAll('.control input[type="range"]').forEach(range => {
+            const control = range.closest('.control');
+            if (!control) return;
+            control.addEventListener('pointerdown', function (event) {
+                if (event.target === range || event.target.closest('button, select, [data-wave-size-label]')) return;
+                const rect = range.getBoundingClientRect();
+                if (!rect.width) return;
+                const ratio = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
+                const min = Number(range.min || 0);
+                const max = Number(range.max || 100);
+                const step = Number(range.step || 1);
+                range.value = String(Math.round((min + ratio * (max - min)) / step) * step);
+                range.dispatchEvent(new Event('input', { bubbles: true }));
+            });
+        });
+
+        /* SPEED AND VOLUME EVENTS */
+        waveSpeed.addEventListener("input", function () {
+            startAudio();
+            updateWaveSpeed();
+        });
+
+        sound.addEventListener("input", function () {
+            startAudio();
+            updateAudioVolumes();
+        });
+
+        waveVolume.addEventListener("input", function () {
+            startAudio();
+            updateAudioVolumes();
+        });
+
+        windVolume.addEventListener("input", function () {
+            startAudio();
+            updateAudioVolumes();
+        });
+
+        rainVolume.addEventListener("input", function () {
+            startAudio();
+            updateAudioVolumes();
+        });
+
+        /* ENTER FOCUS MODE */
+        enter.addEventListener("click", async function () {
+            await startAudio();
+            await resumeActiveAudio();
+            sea.classList.add("immersive-mode");
+        });
+
+        /* CLOSE FOCUS MODE */
+        close.addEventListener("click", function () {
+            sea.classList.remove("immersive-mode");
+        });
+
+        /* FIRST USER INTERACTION */
+        document.addEventListener("pointerdown", function () {
+            startAudio();
+        }, { once: true });
+
+        document.addEventListener("keydown", function () {
+            startAudio();
+        }, { once: true });
+
+        /* PAGE LOAD */
+        window.addEventListener("load", function () {
+            updateAudioVolumes();
+            updateWaveSpeed();
+            updateWaveSizeSlider();
+            applyVisualSettings();
+
+            currentVideo.play().catch(() => {});
+            startAudio();
+            updateEnvironment();
+        });
+
+        allVideos.forEach(video => {
+            video.addEventListener("loadedmetadata", function () {
+                video.playbackRate = getWaveSpeed();
+
+                if (video === currentVideo) {
+                    video.play().catch(() => {});
+                }
+            });
+        });
+
+        /* HOME / SAVED SEAS / RESET */
+        const brandTitle = document.getElementById("brandTitle");
+        const openMyPage = document.getElementById("openMyPage");
+        const makeMySea = document.getElementById("makeMySea");
+        const homeScreen = document.getElementById("homeScreen");
+        const myPageScreen = document.getElementById("myPageScreen");
+        const backFromMyPage = document.getElementById("backFromMyPage");
+        const savedGrid = document.getElementById("savedGrid");
+        const emptySaved = document.getElementById("emptySaved");
+        const saveSeaButton = document.getElementById("saveSea");
+        const resetSettingsButton = document.getElementById("resetSettings");
+
+
+        /* LANGUAGE SWITCH: Korean / English */
+        let currentLanguage = localStorage.getItem("makeYourSeaLanguage") || "ko";
+        const langKoButton = document.getElementById("langKo");
+        const langEnButton = document.getElementById("langEn");
+
+        const languageText = {
+            ko: {
+                brand: "Make Your Sea", homeTitle: "Make Your Sea", makeButton: "나만의 바다 만들기",
+                homeDescription: "파도와 날씨, 시간과 소리를 내 취향대로 조합해 나만의 바다를 만들어요.\n잠시 머물며 쉬어가는 커스텀 힐링 공간입니다.",
+                featureTitles: ["나만의 바다 커스텀", "소리로 채우는 휴식", "나만의 바다 저장"],
+                featureTexts: ["시간대와 날씨, 파도 크기와 속도를 취향대로 조절해요.", "파도·바람·빗소리의 크기를 섞어 나만의 사운드를 만들어요.", "마음에 드는 조합을 저장하고 언제든 다시 감상해요."],
+                myPage: "마이페이지", back: "뒤로", empty: "아직 저장한 바다가 없어요. 나만의 바다를 만들고 저장해 보세요.",
+                labels: { TIME: "시간", WEATHER: "날씨", "WAVE SIZE": "파도 크기", "WAVE SPEED": "파도 속도", SOUND: "전체 사운드", WAVE: "파도", WIND: "바람", RAIN: "비" },
+                options: { Day: "낮", Sunset: "노을", Night: "밤", Clear: "맑음", Cloudy: "흐림", Rain: "비", Small: "작게", Medium: "중간", Large: "크게" },
+                save: "바다 저장", reset: "초기화", enter: "나만의 바다로 들어가기", edit: "편집", focus: "집중 모드", delete: "삭제",
+                savePrompt: "저장할 바다의 이름을 입력해 주세요.", saveConfirm: "모든 설정을 기본값으로 되돌릴까요?", deleteConfirm: "삭제할까요?", saved: "저장 완료 ✓"
+            },
+            en: {
+                brand: "Make Your Sea", homeTitle: "Make Your Sea", makeButton: "MAKE MY SEA",
+                homeDescription: "Customize the waves, weather, time of day, and sounds to create your own sea.\nA calming space to pause, unwind, and recharge.",
+                featureTitles: ["Customize Your Sea", "A Soundtrack for Rest", "Save Your Seascape"],
+                featureTexts: ["Adjust the time, weather, wave size, and speed to your liking.", "Mix the volume of waves, wind, and rain to create your own soundscape.", "Save your favorite settings and return to them anytime."],
+                myPage: "MY PAGE", back: "BACK", empty: "You haven't saved a sea yet. Create and save your own sea.",
+                labels: { TIME: "TIME", WEATHER: "WEATHER", "WAVE SIZE": "WAVE SIZE", "WAVE SPEED": "WAVE SPEED", SOUND: "SOUND", WAVE: "WAVE", WIND: "WIND", RAIN: "RAIN" },
+                options: { Day: "Day", Sunset: "Sunset", Night: "Night", Clear: "Clear", Cloudy: "Cloudy", Rain: "Rain", Small: "Small", Medium: "Medium", Large: "Large" },
+                save: "SAVE MY SEA", reset: "RESET", enter: "ENTER MY SEA", edit: "EDIT", focus: "FOCUS MODE", delete: "DELETE",
+                savePrompt: "Enter a name for your sea.", saveConfirm: "Reset all settings to their defaults?", deleteConfirm: "Delete this sea?", saved: "SAVED ✓"
+            }
+        };
+
+        function updateLanguage(language) {
+            currentLanguage = language === "en" ? "en" : "ko";
+            localStorage.setItem("makeYourSeaLanguage", currentLanguage);
+            const t = languageText[currentLanguage];
+
+            document.documentElement.lang = currentLanguage === "ko" ? "ko" : "en";
+            document.getElementById("homeHeading").textContent = t.homeTitle;
+            document.getElementById("homeDescription").innerHTML = t.homeDescription.replace("\n", "<br>");
+            t.featureTitles.forEach((value, index) => document.getElementById(`featureTitle${index + 1}`).textContent = value);
+            t.featureTexts.forEach((value, index) => document.getElementById(`featureText${index + 1}`).textContent = value);
+            makeMySea.textContent = t.makeButton;
+            brandTitle.textContent = sea.classList.contains("my-page-mode") ? t.myPage : t.brand;
+            backFromMyPage.textContent = t.back;
+            openMyPage.textContent = t.myPage;
+            emptySaved.textContent = t.empty;
+            saveSeaButton.textContent = t.save;
+            resetSettingsButton.textContent = t.reset;
+            enter.textContent = t.enter;
+
+            document.querySelectorAll(".control label").forEach(label => {
+                const key = label.dataset.languageKey || label.textContent.trim();
+                label.dataset.languageKey = key;
+                if (t.labels[key]) label.textContent = t.labels[key];
+            });
+
+            [time, weather].forEach(select => {
+                Array.from(select.options).forEach(option => {
+                    const original = option.dataset.originalText || option.textContent.trim();
+                    option.dataset.originalText = original;
+                    option.textContent = t.options[original] || original;
+                });
+            });
+
+            document.querySelectorAll("[data-wave-size-label]").forEach(label => {
+                const original = label.dataset.waveSizeLabel;
+                const key = original.charAt(0).toUpperCase() + original.slice(1);
+                label.textContent = t.options[key] || key;
+            });
+
+            langKoButton.classList.toggle("active", currentLanguage === "ko");
+            langEnButton.classList.toggle("active", currentLanguage === "en");
+            langKoButton.setAttribute("aria-pressed", String(currentLanguage === "ko"));
+            langEnButton.setAttribute("aria-pressed", String(currentLanguage === "en"));
+
+            if (!savedGrid.children.length || sea.classList.contains("my-page-mode")) renderSavedSeas();
+        }
+
+        langKoButton.addEventListener("click", () => updateLanguage("ko"));
+        langEnButton.addEventListener("click", () => updateLanguage("en"));
+
+        const DEFAULT_SETTINGS = {
+            time: "day",
+            weather: "clear",
+            waveSize: "medium",
+            waveSpeed: "5",
+            sound: "50",
+            waveVolume: "100",
+            windVolume: "10",
+            rainVolume: "60"
+        };
+
+        let editingSavedId = null;
+
+        function getSavedSeas() {
+            try {
+                return JSON.parse(localStorage.getItem("makeYourSeaSaved") || "[]");
+            } catch (error) {
+                return [];
+            }
+        }
+
+        function getCurrentSettings() {
+            return {
+                time: time.value,
+                weather: weather.value,
+                waveSize: currentWaveSize,
+                waveSpeed: waveSpeed.value,
+                sound: sound.value,
+                waveVolume: waveVolume.value,
+                windVolume: windVolume.value,
+                rainVolume: rainVolume.value
+            };
+        }
+
+        function applySettings(settings) {
+            const s = { ...DEFAULT_SETTINGS, ...settings };
+
+            time.value = s.time;
+            weather.value = s.weather;
+            waveSpeed.value = s.waveSpeed;
+            sound.value = s.sound;
+            waveVolume.value = s.waveVolume;
+            windVolume.value = s.windVolume;
+            rainVolume.value = s.rainVolume;
+
+            currentWaveSize = s.waveSize;
+
+            updateWaveSizeSlider();
+            updateAudioVolumes();
+            updateWaveSpeed();
+            updateEnvironment();
+        }
+
+        function setPage(page) {
+            sea.classList.remove("home-mode", "my-page-mode", "immersive-mode");
+
+            homeScreen.classList.toggle("hidden", page !== "home");
+            myPageScreen.classList.toggle("hidden", page !== "mypage");
+
+            if (page === "home") {
+                sea.classList.add("home-mode");
+                brandTitle.textContent = languageText[currentLanguage].brand;
+            }
+
+            if (page === "mypage") {
+                sea.classList.add("my-page-mode");
+                brandTitle.textContent = languageText[currentLanguage].myPage;
+                renderSavedSeas();
+            }
+
+            if (page === "editor") {
+                brandTitle.textContent = languageText[currentLanguage].brand;
+                startAudio();
+                resumeActiveAudio();
+            }
+        }
+
+        function renderSavedSeas() {
+            const saved = getSavedSeas();
+
+            savedGrid.innerHTML = "";
+            emptySaved.style.display = saved.length ? "none" : "block";
+
+            saved.forEach(item => {
+                const card = document.createElement("article");
+                card.className = "saved-card";
+
+                const preview = document.createElement("div");
+                preview.className = "saved-preview";
+
+                const body = document.createElement("div");
+                body.className = "saved-card-body";
+
+                const title = document.createElement("h3");
+                title.className = "saved-card-title";
+                title.textContent = item.name;
+
+                const meta = document.createElement("p");
+                meta.className = "saved-card-meta";
+
+                const waveLabel = {
+                    small: "Small",
+                    medium: "Medium",
+                    large: "Large"
+                }[item.settings.waveSize] || "Medium";
+
+                meta.textContent =
+                    `${item.settings.time} · ${item.settings.weather} · ${waveLabel} waves`;
+
+                const actions = document.createElement("div");
+                actions.className = "saved-card-actions";
+
+                const edit = document.createElement("button");
+                edit.textContent = languageText[currentLanguage].edit;
+                edit.type = "button";
+
+                edit.addEventListener("click", event => {
+                    event.stopPropagation();
+                    editingSavedId = item.id;
+                    applySettings(item.settings);
+                    setPage("editor");
+                });
+
+                const focus = document.createElement("button");
+                focus.textContent = languageText[currentLanguage].focus;
+                focus.type = "button";
+
+                focus.addEventListener("click", event => {
+                    event.stopPropagation();
+                    applySettings(item.settings);
+                    setPage("editor");
+                    sea.classList.add("immersive-mode");
+                });
+
+                const remove = document.createElement("button");
+                remove.textContent = languageText[currentLanguage].delete;
+                remove.type = "button";
+
+                remove.addEventListener("click", event => {
+                    event.stopPropagation();
+
+                    if (confirm(currentLanguage === "ko" ? `'${item.name}'을(를) 삭제할까요?` : `${languageText.en.deleteConfirm} (${item.name})`)) {
+                        localStorage.setItem(
+                            "makeYourSeaSaved",
+                            JSON.stringify(
+                                getSavedSeas().filter(s => s.id !== item.id)
+                            )
+                        );
+
+                        renderSavedSeas();
+                    }
+                });
+
+                actions.append(edit, focus, remove);
+                body.append(title, meta, actions);
+                card.append(preview, body);
+
+                card.addEventListener("click", () => {
+                    editingSavedId = item.id;
+                    applySettings(item.settings);
+                    setPage("editor");
+                });
+
+                savedGrid.append(card);
+            });
+        }
+
+        /* NAVIGATION EVENTS */
+        makeMySea.addEventListener("click", () => {
+            setPage("editor");
+        });
+
+        brandTitle.addEventListener("click", () => {
+            if (!sea.classList.contains("my-page-mode")) {
+                setPage("home");
+            }
+        });
+
+        openMyPage.addEventListener("click", () => {
+            setPage("mypage");
+        });
+
+        backFromMyPage.addEventListener("click", () => {
+            setPage("editor");
+        });
+
+        /* SAVE CURRENT SEA */
+        saveSeaButton.addEventListener("click", () => {
+            const current = getCurrentSettings();
+            const saved = getSavedSeas();
+
+            const existing = editingSavedId
+                ? saved.find(item => item.id === editingSavedId)
+                : null;
+
+            const suggestedName = existing
+                ? existing.name
+                : `My Sea ${saved.length + 1}`;
+
+            const name = prompt(
+                languageText[currentLanguage].savePrompt,
+                suggestedName
+            );
+
+            if (!name || !name.trim()) return;
+
+            const item = {
+                id: editingSavedId || `sea-${Date.now()}`,
+                name: name.trim(),
+                settings: current,
+                updatedAt: new Date().toISOString()
+            };
+
+            const index = saved.findIndex(s => s.id === item.id);
+
+            if (index >= 0) {
+                saved[index] = item;
+            } else {
+                saved.unshift(item);
+            }
+
+            localStorage.setItem("makeYourSeaSaved", JSON.stringify(saved));
+            editingSavedId = item.id;
+
+            saveSeaButton.textContent = languageText[currentLanguage].saved;
+
+            setTimeout(() => {
+                saveSeaButton.textContent = languageText[currentLanguage].save;
+            }, 1500);
+        });
+
+        /* RESET SETTINGS */
+        resetSettingsButton.addEventListener("click", () => {
+            if (!confirm(languageText[currentLanguage].saveConfirm)) return;
+
+            editingSavedId = null;
+            applySettings(DEFAULT_SETTINGS);
+        });
+
+        /* INITIAL STATE */
+        updateAudioVolumes();
+        updateWaveSpeed();
+        updateWaveSizeSlider();
+        updateEnvironment();
+        updateLanguage(currentLanguage);
+    </script>
+</body>
+</html>
